@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OS Visualizer — Hệ Điều Hành</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">OS</div>
+      OS Visualizer
+    </div>
+    <nav>
+      <button class="nav-btn active-cpu"  onclick="switchPanel('cpu',this)">⚡ Điều phối CPU</button>
+      <button class="nav-btn"             onclick="switchPanel('dead',this)">🔒 Deadlock</button>
+      <button class="nav-btn"             onclick="switchPanel('page',this)">📄 Thay thế Trang</button>
+    </nav>
+  </header>
+
+  <!-- ══════════════ CPU PANEL ══════════════ -->
+  <div class="panel active" id="panel-cpu">
+    <div class="panel-header">
+      <div class="panel-sub">Module 01</div>
+      <div class="panel-title"><span class="accent-cpu">Điều phối</span> CPU</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title cpu-color">Cấu hình thuật toán</div>
+      <div class="input-row" style="margin-bottom:1rem">
+        <label>Thuật toán</label>
+        <select id="cpu-algo" onchange="cpuAlgoChanged()">
+          <option value="fcfs">FCFS — First Come First Serve</option>
+          <option value="sjf">SJF — Shortest Job First (Non-preemptive)</option>
+          <option value="srtf">SRTF — Shortest Remaining Time (Preemptive)</option>
+          <option value="rr">Round Robin</option>
+          <option value="priority_np">Priority — Non-preemptive</option>
+          <option value="priority_p">Priority — Preemptive</option>
+          <option value="hrrn">HRRN — Highest Response Ratio Next</option>
+        </select>
+      </div>
+      <div id="rq-wrap" class="input-row" style="display:none;margin-bottom:1rem">
+        <label>Time Quantum</label>
+        <input type="number" id="quantum" value="2" min="1" max="20" style="width:70px" />
+      </div>
+      <div class="divider"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <div class="card-title cpu-color" style="margin-bottom:0">Danh sách tiến trình</div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-ghost sm" onclick="cpuAddProcess()">+ Thêm</button>
+          <button class="btn btn-ghost sm" onclick="cpuRemoveProcess()">− Xóa</button>
+          <button class="btn btn-ghost sm" onclick="cpuLoadSample()">Mẫu</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tiến trình</th><th>Arrival Time</th><th>Burst Time</th>
+              <th class="col-priority" style="display:none">Priority <span style="opacity:.5;font-size:.8em">(nhỏ = cao)</span></th>
+            </tr>
+          </thead>
+          <tbody id="cpu-table-body"></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-cpu" onclick="runCPU()">▶ Chạy mô phỏng</button>
+      </div>
+    </div>
+
+    <div class="card" id="cpu-result" style="display:none">
+      <div class="card-title cpu-color">Gantt Chart</div>
+      <div class="gantt-wrap">
+        <div style="position:relative;padding-bottom:28px">
+          <div class="gantt-chart" id="gantt-chart"></div>
+          <div id="gantt-labels" style="position:relative;height:20px"></div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="card-title cpu-color">Bảng thống kê</div>
+      <div class="table-wrap">
+        <table class="stats-table">
+          <thead><tr><th>Tiến trình</th><th>AT</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
+          <tbody id="cpu-stats-body"></tbody>
+        </table>
+      </div>
+      <div class="metrics" id="cpu-metrics"></div>
+      <div class="divider"></div>
+      <div class="card-title cpu-color">Biểu đồ so sánh Waiting Time</div>
+      <canvas id="cpu-bar-chart" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- ══════════════ DEADLOCK PANEL ══════════════ -->
+  <div class="panel" id="panel-dead">
+    <div class="panel-header">
+      <div class="panel-sub">Module 02</div>
+      <div class="panel-title"><span class="accent-dead">Deadlock</span> — Banker's Algorithm</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title dead-color">Cấu hình hệ thống</div>
+      <div class="input-row" style="flex-wrap:wrap;gap:1.2rem">
+        <div style="display:flex;align-items:center;gap:.6rem">
+          <label>Số tiến trình (n)</label>
+          <input type="number" id="dead-n" value="5" min="1" max="10" onchange="deadRebuild()" style="width:60px" />
+        </div>
+        <div style="display:flex;align-items:center;gap:.6rem">
+          <label>Số tài nguyên (m)</label>
+          <input type="number" id="dead-m" value="3" min="1" max="6" onchange="deadRebuild()" style="width:60px" />
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:.75rem">
+        <button class="btn btn-ghost sm" onclick="deadLoadSample(1)">Mẫu SGK</button>
+        <button class="btn btn-ghost sm" onclick="deadLoadSample(2)">Mẫu 2</button>
+        <button class="btn btn-ghost sm" onclick="deadLoadSample(3)">Mẫu Deadlock</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title dead-color">Ma trận nhập liệu</div>
+      <div class="matrix-grid" id="dead-matrices"></div>
+      <div style="margin-top:1.2rem">
+        <div class="card-title dead-color">Available Vector</div>
+        <div id="dead-available-row" class="matrix-row" style="gap:8px;margin-top:.5rem"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-dead" onclick="runDeadlock()">▶ Kiểm tra Safety State</button>
+        <button class="btn btn-ghost" onclick="toggleRRSection()">📋 Resource Request</button>
+      </div>
+    </div>
+
+    <div class="card" id="rr-section" style="display:none">
+      <div class="card-title dead-color">Resource Request — Kiểm tra cấp phát tài nguyên</div>
+      <div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin-bottom:1rem">
+        <div style="display:flex;align-items:center;gap:.6rem">
+          <label>Tiến trình</label>
+          <select id="rr-pid" style="width:80px"></select>
+        </div>
+        <div style="display:flex;align-items:center;gap:.6rem">
+          <label>Request vector</label>
+          <div id="rr-req-row" style="display:flex;gap:6px"></div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-dead" onclick="checkDeadlockRequest()">▶ Kiểm tra</button>
+      </div>
+      <div id="rr-result" style="margin-top:1rem"></div>
+    </div>
+
+    <div class="card" id="dead-result" style="display:none">
+      <div class="card-title dead-color">Kết quả Safety Check</div>
+      <div id="dead-safe-badge" style="margin-bottom:.75rem"></div>
+      <div id="dead-seq" class="seq-display"></div>
+      <div class="divider"></div>
+      <div class="card-title dead-color">Need Matrix = Max − Allocation</div>
+      <div id="dead-need-table" class="table-wrap" style="margin-bottom:1.2rem"></div>
+      <div class="card-title dead-color">Log thực thi từng bước</div>
+      <div class="step-log" id="dead-log"></div>
+      <div class="divider"></div>
+      <div class="card-title dead-color">Resource Allocation Graph</div>
+      <canvas id="dead-canvas" height="320" style="width:100%;border-radius:10px"></canvas>
+    </div>
+  </div>
+
+  <!-- ══════════════ PAGE PANEL ══════════════ -->
+  <div class="panel" id="panel-page">
+    <div class="panel-header">
+      <div class="panel-sub">Module 03</div>
+      <div class="panel-title"><span class="accent-page">Thay thế</span> Trang</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title page-color">Cấu hình</div>
+      <div style="display:flex;flex-wrap:wrap;gap:1.2rem;align-items:flex-end">
+        <div>
+          <label style="display:block;margin-bottom:.4rem">Chuỗi tham chiếu trang</label>
+          <input type="text" id="page-ref" value="7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1" style="width:360px" />
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:.4rem">Số frame</label>
+          <input type="number" id="page-frames" value="3" min="1" max="10" style="width:60px" />
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-page" onclick="runPageAll()">▶ Chạy tất cả thuật toán</button>
+        <button class="btn btn-ghost sm" onclick="pageSample(1)">Mẫu 1</button>
+        <button class="btn btn-ghost sm" onclick="pageSample(2)">Mẫu 2</button>
+        <button class="btn btn-ghost sm" onclick="pageSample(3)">Mẫu 3</button>
+      </div>
+    </div>
+
+    <div id="page-result" style="display:none">
+      <div class="algo-tabs">
+        <button class="algo-tab active" onclick="showPageAlgo('fifo',this)">FIFO</button>
+        <button class="algo-tab" onclick="showPageAlgo('lru',this)">LRU</button>
+        <button class="algo-tab" onclick="showPageAlgo('optimal',this)">Optimal</button>
+        <button class="algo-tab" onclick="showPageAlgo('clock',this)">Clock</button>
+        <button class="algo-tab" onclick="showPageAlgo('lfu',this)">LFU</button>
+      </div>
+
+      <div class="card" id="page-fifo-panel"><div class="card-title page-color">FIFO — First In First Out</div><div id="fifo-content"></div></div>
+      <div class="card" id="page-lru-panel"     style="display:none"><div class="card-title page-color">LRU — Least Recently Used</div><div id="lru-content"></div></div>
+      <div class="card" id="page-optimal-panel" style="display:none"><div class="card-title page-color">Optimal — Belady's Algorithm</div><div id="optimal-content"></div></div>
+      <div class="card" id="page-clock-panel"   style="display:none"><div class="card-title page-color">Clock — Second Chance Algorithm</div><div id="clock-content"></div></div>
+      <div class="card" id="page-lfu-panel"     style="display:none"><div class="card-title page-color">LFU — Least Frequently Used</div><div id="lfu-content"></div></div>
+
+      <div class="card">
+        <div class="card-title page-color">So sánh tất cả thuật toán</div>
+        <div class="table-wrap">
+          <table class="stats-table">
+            <thead><tr><th>Thuật toán</th><th>Page Faults</th><th>Page Hits</th><th>Hit Rate</th><th>Fault Rate</th></tr></thead>
+            <tbody id="page-compare-body"></tbody>
+          </table>
+        </div>
+        <div class="metrics" id="page-metrics"></div>
+        <div class="divider"></div>
+        <div class="card-title page-color">Biểu đồ so sánh Page Fault</div>
+        <canvas id="page-bar-chart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .app -->
+
+<script src="cpu.js"></script>
+<script src="deadlock.js"></script>
+<script src="page.js"></script>
+<script>
+  function switchPanel(name, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b => b.className = 'nav-btn');
+    if (btn) btn.className = 'nav-btn active-' + name;
+  }
+</script>
+</body>
+</html>
