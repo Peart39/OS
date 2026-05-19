@@ -41,7 +41,6 @@
           <option value="rr">Round Robin</option>
           <option value="priority_np">Priority — Non-preemptive</option>
           <option value="priority_p">Priority — Preemptive</option>
-          <option value="hrrn">HRRN — Highest Response Ratio Next</option>
         </select>
       </div>
       <div id="rq-wrap" class="input-row" style="display:none;margin-bottom:1rem">
@@ -201,14 +200,12 @@
         <button class="algo-tab" onclick="showPageAlgo('lru',this)">LRU</button>
         <button class="algo-tab" onclick="showPageAlgo('optimal',this)">Optimal</button>
         <button class="algo-tab" onclick="showPageAlgo('clock',this)">Clock</button>
-        <button class="algo-tab" onclick="showPageAlgo('lfu',this)">LFU</button>
       </div>
 
       <div class="card" id="page-fifo-panel"><div class="card-title page-color">FIFO — First In First Out</div><div id="fifo-content"></div></div>
       <div class="card" id="page-lru-panel"     style="display:none"><div class="card-title page-color">LRU — Least Recently Used</div><div id="lru-content"></div></div>
       <div class="card" id="page-optimal-panel" style="display:none"><div class="card-title page-color">Optimal — Belady's Algorithm</div><div id="optimal-content"></div></div>
       <div class="card" id="page-clock-panel"   style="display:none"><div class="card-title page-color">Clock — Second Chance Algorithm</div><div id="clock-content"></div></div>
-      <div class="card" id="page-lfu-panel"     style="display:none"><div class="card-title page-color">LFU — Least Frequently Used</div><div id="lfu-content"></div></div>
 
       <div class="card">
         <div class="card-title page-color">So sánh tất cả thuật toán</div>

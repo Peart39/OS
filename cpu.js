@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════════
    cpu.js  —  CPU Scheduling Module
-   Algorithms: FCFS | SJF | SRTF | Round Robin | Priority NP | Priority P | HRRN
+   Algorithms: FCFS | SJF | SRTF | Round Robin | Priority NP | Priority P
    ════════════════════════════════════════════════════════════════════ */
 
 const P_COLORS = [
@@ -196,25 +196,6 @@ function algoPriorityP(procs) {
   return { gantt: mergeGantt(gantt), completed };
 }
 
-/* ── HRRN ──────────────────────────────────────────────────────────── */
-function algoHRRN(procs) {
-  let remaining = [...procs], time = 0;
-  const gantt = [], completed = [];
-  while (remaining.length) {
-    const avail = remaining.filter(p => p.at <= time);
-    if (!avail.length) { time = remaining.sort((a,b)=>a.at-b.at)[0].at; continue; }
-    avail.forEach(p => { p._hrr = ((time - p.at) + p.bt) / p.bt; });
-    avail.sort((a,b) => b._hrr - a._hrr);
-    const p = avail[0];
-    remaining.splice(remaining.indexOf(p), 1);
-    if (time < p.at) gantt.push({ id:'idle', start:time, end:p.at });
-    p.rt = time - p.at;
-    gantt.push({ id:p.id, start:time, end:time+p.bt });
-    p.ct = time + p.bt; time += p.bt; completed.push(p);
-  }
-  return { gantt: mergeGantt(gantt), completed };
-}
-
 /* ════════════════════════════════════════════════════════════════════
    RUN DISPATCHER
    ════════════════════════════════════════════════════════════════════ */
@@ -230,7 +211,6 @@ function runCPU() {
     rr:          () => algoRR(procs, quantum),
     priority_np: () => algoPriorityNP(procs),
     priority_p:  () => algoPriorityP(procs),
-    hrrn:        () => algoHRRN(procs),
   };
 
   const { gantt, completed } = dispatch[algo]();
@@ -343,16 +323,22 @@ function renderCPUResult(gantt, completed) {
 
 /* ── Bar chart: WT + TAT per process ──────────────────────────────── */
 function drawCPUBarChart(completed) {
-  const canvas = document.getElementById('cpu-bar-chart');
-  const ctx    = canvas.getContext('2d');
-  canvas.width = canvas.parentElement.clientWidth || 800;
+  const canvas    = document.getElementById('cpu-bar-chart');
+  const ctx       = canvas.getContext('2d');
+  const container = canvas.parentElement;
+  const style     = getComputedStyle(container);
+  const padH      = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  canvas.width    = Math.max((container.clientWidth - padH) || 0, 300);
+  canvas.height   = Math.max(Math.round(canvas.width * 0.25), 160);
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#181c24'; ctx.fillRect(0, 0, W, H);
 
   const n       = completed.length;
   const maxV    = Math.max(...completed.flatMap(p => [p.wt, p.tat]), 1);
-  const chartH  = H - 56;
+  const TOP_PAD = 24;
+  const BOT_PAD = 44;
+  const chartH  = H - TOP_PAD - BOT_PAD;
   const groupW  = (W - 60) / n;
   const barW    = Math.min(28, groupW * 0.35);
   const barGap  = Math.min(6, groupW * 0.06);
@@ -360,7 +346,7 @@ function drawCPUBarChart(completed) {
   /* grid lines */
   ctx.strokeStyle = '#1e2330'; ctx.lineWidth = 1;
   [1,2,3,4].forEach(i => {
-    const y = chartH - chartH * i / 4;
+    const y = TOP_PAD + chartH - chartH * i / 4;
     ctx.beginPath(); ctx.moveTo(50, y); ctx.lineTo(W - 10, y); ctx.stroke();
     ctx.fillStyle = '#6b7280'; ctx.font = '10px JetBrains Mono'; ctx.textAlign = 'right';
     ctx.fillText(Math.round(maxV * i / 4), 44, y + 4);
@@ -373,32 +359,33 @@ function drawCPUBarChart(completed) {
 
     const drawBar = (x, val, color) => {
       const bH = Math.max((val / maxV) * chartH, 2);
-      const y  = chartH - bH;
-      const grad = ctx.createLinearGradient(x, y, x, chartH);
+      const y  = TOP_PAD + chartH - bH;
+      const grad = ctx.createLinearGradient(x, y, x, TOP_PAD + chartH);
       grad.addColorStop(0, color + '99');
       grad.addColorStop(1, color + '22');
       ctx.fillStyle = grad; ctx.fillRect(x, y, barW, bH);
       ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, barW, bH);
       ctx.fillStyle = color; ctx.font = 'bold 10px JetBrains Mono'; ctx.textAlign = 'center';
-      ctx.fillText(val, x + barW / 2, Math.max(y - 4, 12));
+      ctx.fillText(val, x + barW / 2, Math.max(y - 4, TOP_PAD + 10));
     };
 
     drawBar(cx - barW - barGap / 2, p.wt, c);
     drawBar(cx + barGap / 2,        p.tat, '#ffd60a');
 
+    const labelY = TOP_PAD + chartH;
     ctx.fillStyle = c; ctx.font = 'bold 11px JetBrains Mono'; ctx.textAlign = 'center';
-    ctx.fillText('P' + p.id, cx, chartH + 16);
-    ctx.fillStyle = '#374151'; ctx.font = '9px JetBrains Mono';
-    ctx.fillText('AT=' + p.at, cx, chartH + 29);
+    ctx.fillText('P' + p.id, cx, labelY + 16);
+    ctx.fillStyle = '#cfcfcf'; ctx.font = '9px JetBrains Mono';
+    ctx.fillText('AT=' + p.at, cx, labelY + 28);
   });
 
-  /* legend */
-  const lx = W - 170, ly = 10;
-  ctx.fillStyle = '#00d4ff88'; ctx.fillRect(lx, ly, 14, 14);
+  /* legend — đặt ở góc trên trái, tránh đè lên cột */
+  const lx = 56, ly = 6;
+  ctx.fillStyle = '#00d4ff88'; ctx.fillRect(lx, ly, 12, 12);
   ctx.fillStyle = '#aaa'; ctx.font = '10px JetBrains Mono'; ctx.textAlign = 'left';
-  ctx.fillText('Waiting Time', lx + 18, ly + 11);
-  ctx.fillStyle = '#ffd60a88'; ctx.fillRect(lx, ly + 20, 14, 14);
-  ctx.fillText('Turnaround Time', lx + 18, ly + 31);
+  ctx.fillText('Waiting Time', lx + 16, ly + 10);
+  ctx.fillStyle = '#ffd60a88'; ctx.fillRect(lx + 110, ly, 12, 12);
+  ctx.fillText('Turnaround Time', lx + 126, ly + 10);
 }
 
 /* ── Init ─────────────────────────────────────────────────────────── */

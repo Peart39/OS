@@ -270,9 +270,13 @@ function checkDeadlockRequest() {
    RESOURCE ALLOCATION GRAPH (Canvas)
    ════════════════════════════════════════════════════════════════════ */
 function drawRAG(safe, seq, need) {
-  const canvas = document.getElementById('dead-canvas');
-  const ctx    = canvas.getContext('2d');
-  canvas.width = Math.min(canvas.parentElement.clientWidth || 700, 900);
+  const canvas    = document.getElementById('dead-canvas');
+  const ctx       = canvas.getContext('2d');
+  const container = canvas.parentElement;
+  const style     = getComputedStyle(container);
+  const padH      = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  canvas.width    = Math.max((container.clientWidth - padH) || 0, 300);
+  canvas.height   = Math.max(Math.round(canvas.width * 0.38), 220);
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#0e1117'; ctx.fillRect(0, 0, W, H);

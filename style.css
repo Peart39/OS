@@ -16,6 +16,8 @@
   --page-dim:  rgba(124,58,237,.12);
   --green:     #00ff94;
   --yellow:    #ffd60a;
+  --empty:     #00b47a;
+  --empty-dim: rgba(0,180,122,.12);
   --text:      #e8eaf0;
   --text-dim:  #6b7280;
   --text-muted:#374151;
@@ -176,6 +178,13 @@ td input:focus { border-color: var(--border2); background: var(--surface2); outl
 }
 .metric-label  { font-size: .66rem; color: var(--text-dim); letter-spacing: .06em; text-transform: uppercase; margin-bottom: .25rem; font-family: 'Inter', system-ui, sans-serif; font-weight: 500; }
 .metric-value  { font-size: 1.35rem; font-weight: 800; font-family: 'Inter', system-ui, sans-serif; }
+/* metric value colors — dùng trong JS innerHTML */
+.mv-cpu    { color: var(--cpu); }
+.mv-dead   { color: var(--dead); }
+.mv-page   { color: var(--page); }
+.mv-green  { color: var(--green); }
+.mv-yellow { color: var(--yellow); }
+/* alias cũ (giữ để không vỡ code khác) */
 .mc-cpu    { color: var(--cpu); }
 .mc-dead   { color: var(--dead); }
 .mc-page   { color: var(--page); }
@@ -245,8 +254,16 @@ td input:focus { border-color: var(--border2); background: var(--surface2); outl
   font-size: .8rem; line-height: 2;
   font-family: var(--mono);
 }
-.step-log .log-line { border-bottom: 1px solid var(--border); padding: .05rem 0; }
+.step-log .log-line  { border-bottom: 1px solid var(--border); padding: .05rem 0; }
 .step-log .log-line:last-child { border-bottom: none; }
+/* class dùng trong JS (span bên trong log-line) */
+.log-t    { color: var(--text-dim); margin-right: .5rem; }
+.log-info { color: var(--cpu); }
+.log-fault{ color: var(--dead);    font-weight: 600; }
+.log-hit  { color: var(--green);   font-weight: 600; }
+.log-empty{ color: var(--empty);   font-weight: 600; }  /* ← MỚI */
+.log-warn { color: var(--yellow); }
+/* alias cũ dùng trong deadlock.js */
 .step-log .t     { color: var(--text-dim); margin-right: .5rem; }
 .step-log .fault { color: var(--dead);  font-weight: 600; }
 .step-log .hit   { color: var(--green); font-weight: 600; }
@@ -264,6 +281,7 @@ td input:focus { border-color: var(--border2); background: var(--surface2); outl
 .algo-tab:hover  { border-color: var(--page); color: var(--page); }
 .algo-tab.active { background: var(--page); border-color: var(--page); color: #fff; }
 
+/* ── Page chips ── */
 .page-ref-display { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 1rem; }
 .page-chip {
   width: 36px; height: 36px;
@@ -273,10 +291,28 @@ td input:focus { border-color: var(--border2); background: var(--surface2); outl
   font-family: 'Inter', system-ui, sans-serif;
   transition: transform .15s;
 }
-.page-chip:hover  { transform: scale(1.1); }
-.page-chip.fault  { background: var(--dead-dim); border-color: rgba(255,77,109,.4); color: var(--dead); }
-.page-chip.hit    { background: rgba(0,255,148,.07); border-color: rgba(0,255,148,.3); color: var(--green); }
+.page-chip:hover { transform: scale(1.1); }
 
+/* HIT — xanh lá */
+.page-chip.hit {
+  background: rgba(0,255,148,.07);
+  border-color: rgba(0,255,148,.3);
+  color: var(--green);
+}
+/* EMPTY — thêm vào frame trống, không phải fault */
+.page-chip.empty {
+  background: var(--empty-dim);
+  border-color: rgba(0,180,122,.35);
+  color: var(--empty);
+}
+/* FAULT — page fault thực sự (phải thay thế) */
+.page-chip.fault {
+  background: var(--dead-dim);
+  border-color: rgba(255,77,109,.4);
+  color: var(--dead);
+}
+
+/* ── Frame table ── */
 .frame-timeline { overflow-x: auto; margin-bottom: 1rem; }
 .frame-table { border-collapse: collapse; font-size: .8rem; font-family: 'Inter', system-ui, sans-serif; }
 .frame-table th {
@@ -284,15 +320,55 @@ td input:focus { border-color: var(--border2); background: var(--surface2); outl
   font-size: .62rem; letter-spacing: .06em; text-transform: uppercase;
   color: var(--text-dim); border: 1px solid var(--border); white-space: nowrap; font-weight: 600;
 }
-.frame-table td { padding: .38rem .55rem; border: 1px solid var(--border); text-align: center; min-width: 36px; }
-.frame-table td.f-fault    { background: rgba(255,77,109,.16); color: var(--dead);  font-weight: 700; }
-.frame-table td.f-hit      { background: rgba(0,255,148,.07);  color: var(--green); }
-.frame-table td.f-replaced { background: rgba(124,58,237,.18); color: #a78bfa; }
-.fault-marker { color: var(--dead);  font-size: .66rem; font-weight: 700; }
-.hit-marker   { color: var(--green); font-size: .66rem; }
+.frame-table td {
+  padding: .38rem .55rem; border: 1px solid var(--border);
+  text-align: center; min-width: 36px;
+}
 
-canvas { display: block; background: var(--surface2); border-radius: var(--radius-sm); }
+/* Cell: page fault thực sự — thay thế trang cũ */
+.cell-replaced {
+  background: rgba(255,77,109,.18);
+  color: var(--dead);
+  font-weight: 700;
+}
+/* Cell: thêm vào frame trống */
+.cell-empty {
+  background: var(--empty-dim);
+  color: var(--empty);
+  font-weight: 700;
+}
+/* Cell: hit — trang đã có */
+.cell-hit {
+  background: rgba(0,255,148,.07);
+  color: var(--green);
+}
 
+/* ── Result row markers ── */
+.fault-marker {
+  display: inline-block; padding: 1px 5px; border-radius: 4px;
+  font-size: .66rem; font-weight: 700; letter-spacing: .04em;
+  background: var(--dead-dim); color: var(--dead);
+}
+.hit-marker {
+  display: inline-block; padding: 1px 5px; border-radius: 4px;
+  font-size: .66rem; font-weight: 700;
+  background: rgba(0,255,148,.08); color: var(--green);
+}
+/* MỚI: marker cho frame trống */
+.empty-marker {
+  display: inline-block; padding: 1px 5px; border-radius: 4px;
+  font-size: .66rem; font-weight: 700;
+  background: var(--empty-dim); color: var(--empty);
+}
+
+canvas {
+  display: block;
+  width: 100% !important;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Responsive ── */
 @media (max-width: 640px) {
   header { padding: 0 1rem; }
   .panel { padding: 1rem; }
